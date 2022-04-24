@@ -8,8 +8,8 @@ We will now install the kubernetes components
 
 ## Prerequisites
 
-The Certificates and Configuration are created on `master-1` node and then copied over to workers using `scp`. 
-Once this is done, the commands are to be run on first worker instance: `worker-1`. Login to first worker instance using SSH Terminal.
+The Certificates and Configuration are created on `master-2` node and then copied over to workers using `scp`. 
+Once this is done, the commands are to be run on first worker instance: `worker-2`. Login to first worker instance using SSH Terminal.
 
 ### Provisioning Kubelet Client Certificates
 
@@ -17,10 +17,10 @@ Kubernetes uses a [special-purpose authorization mode](https://kubernetes.io/doc
 
 Generate a certificate and private key for one worker node:
 
-On master-1:
+On master-2:
 
 ```
-cat > openssl-worker-1.cnf <<EOF
+cat > openssl-worker-2.cnf <<EOF
 [req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name
@@ -30,20 +30,20 @@ basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 subjectAltName = @alt_names
 [alt_names]
-DNS.1 = worker-1
-IP.1 = 192.168.5.21
+DNS.1 = worker-2
+IP.1 = 192.168.141.13
 EOF
 
-openssl genrsa -out worker-1.key 2048
-openssl req -new -key worker-1.key -subj "/CN=system:node:worker-1/O=system:nodes" -out worker-1.csr -config openssl-worker-1.cnf
-openssl x509 -req -in worker-1.csr -CA ca.crt -CAkey ca.key -CAcreateserial  -out worker-1.crt -extensions v3_req -extfile openssl-worker-1.cnf -days 1000
+openssl genrsa -out worker-2.key 2048
+openssl req -new -key worker-2.key -subj "/CN=system:node:worker-2/O=system:nodes" -out worker-2.csr -config openssl-worker-2.cnf
+openssl x509 -req -in worker-2.csr -CA ca.crt -CAkey ca.key -CAcreateserial  -out worker-2.crt -extensions v3_req -extfile openssl-worker-2.cnf -days 1000
 ```
 
 Results:
 
 ```
-worker-1.key
-worker-1.crt
+worker-2.key
+worker-2.crt
 ```
 
 ### The kubelet Kubernetes Configuration File
@@ -52,54 +52,54 @@ When generating kubeconfig files for Kubelets the client certificate matching th
 
 Get the kub-api server load-balancer IP.
 ```
-LOADBALANCER_ADDRESS=192.168.5.30
+LOADBALANCER_ADDRESS=192.168.144.149
 ```
 
 Generate a kubeconfig file for the first worker node.
 
-On master-1:
+On master-2:
 ```
 {
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.crt \
     --embed-certs=true \
     --server=https://${LOADBALANCER_ADDRESS}:6443 \
-    --kubeconfig=worker-1.kubeconfig
+    --kubeconfig=worker-2.kubeconfig
 
-  kubectl config set-credentials system:node:worker-1 \
-    --client-certificate=worker-1.crt \
-    --client-key=worker-1.key \
+  kubectl config set-credentials system:node:worker-2 \
+    --client-certificate=worker-2.crt \
+    --client-key=worker-2.key \
     --embed-certs=true \
-    --kubeconfig=worker-1.kubeconfig
+    --kubeconfig=worker-2.kubeconfig
 
   kubectl config set-context default \
     --cluster=kubernetes-the-hard-way \
-    --user=system:node:worker-1 \
-    --kubeconfig=worker-1.kubeconfig
+    --user=system:node:worker-2 \
+    --kubeconfig=worker-2.kubeconfig
 
-  kubectl config use-context default --kubeconfig=worker-1.kubeconfig
+  kubectl config use-context default --kubeconfig=worker-2.kubeconfig
 }
 ```
 
 Results:
 
 ```
-worker-1.kubeconfig
+worker-2.kubeconfig
 ```
 
 ### Copy certificates, private keys and kubeconfig files to the worker node:
-On master-1:
+On master-2:
 ```
-master-1$ scp ca.crt worker-1.crt worker-1.key worker-1.kubeconfig worker-1:~/
+master-2$ scp ca.crt worker-2.crt worker-2.key worker-2.kubeconfig worker-2:~/
 ```
 
 ### Download and Install Worker Binaries
 
-Going forward all activities are to be done on the `worker-1` node.
+Going forward all activities are to be done on the `worker-2` node.
 
-On worker-1:
+On worker-2:
 ```
-worker-1$ wget -q --show-progress --https-only --timestamping \
+worker-2$ wget -q --show-progress --https-only --timestamping \
   https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubectl \
   https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kube-proxy \
   https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubelet
@@ -110,7 +110,7 @@ Reference: https://kubernetes.io/docs/setup/release/#node-binaries
 Create the installation directories:
 
 ```
-worker-1$ sudo mkdir -p \
+worker-2$ sudo mkdir -p \
   /etc/cni/net.d \
   /opt/cni/bin \
   /var/lib/kubelet \
@@ -129,7 +129,7 @@ Install the worker binaries:
 ```
 
 ### Configure the Kubelet
-On worker-1:
+On worker-2:
 ```
 {
   sudo mv ${HOSTNAME}.key ${HOSTNAME}.crt /var/lib/kubelet/
@@ -141,7 +141,7 @@ On worker-1:
 Create the `kubelet-config.yaml` configuration file:
 
 ```
-worker-1$ cat <<EOF | sudo tee /var/lib/kubelet/kubelet-config.yaml
+worker-2$ cat <<EOF | sudo tee /var/lib/kubelet/kubelet-config.yaml
 kind: KubeletConfiguration
 apiVersion: kubelet.config.k8s.io/v1beta1
 authentication:
@@ -166,7 +166,7 @@ EOF
 Create the `kubelet.service` systemd unit file:
 
 ```
-worker-1$ cat <<EOF | sudo tee /etc/systemd/system/kubelet.service
+worker-2$ cat <<EOF | sudo tee /etc/systemd/system/kubelet.service
 [Unit]
 Description=Kubernetes Kubelet
 Documentation=https://github.com/kubernetes/kubernetes
@@ -192,28 +192,28 @@ EOF
 ```
 
 ### Configure the Kubernetes Proxy
-On worker-1:
+On worker-2:
 ```
-worker-1$ sudo mv kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
+worker-2$ sudo mv kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
 ```
 
 Create the `kube-proxy-config.yaml` configuration file:
 
 ```
-worker-1$ cat <<EOF | sudo tee /var/lib/kube-proxy/kube-proxy-config.yaml
+worker-2$ cat <<EOF | sudo tee /var/lib/kube-proxy/kube-proxy-config.yaml
 kind: KubeProxyConfiguration
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 clientConnection:
   kubeconfig: "/var/lib/kube-proxy/kubeconfig"
 mode: "iptables"
-clusterCIDR: "192.168.5.0/24"
+clusterCIDR: "192.168.0.0/16"
 EOF
 ```
 
 Create the `kube-proxy.service` systemd unit file:
-
+/var/lib/kube-proxy/kubeconfig
 ```
-worker-1$ cat <<EOF | sudo tee /etc/systemd/system/kube-proxy.service
+worker-2$ cat <<EOF | sudo tee /etc/systemd/system/kube-proxy.service
 [Unit]
 Description=Kubernetes Kube Proxy
 Documentation=https://github.com/kubernetes/kubernetes
@@ -230,31 +230,41 @@ EOF
 ```
 
 ### Start the Worker Services
-On worker-1:
-```
-{
+On worker-2:
+```bash
+  sudo swapoff -a
   sudo systemctl daemon-reload
   sudo systemctl enable kubelet kube-proxy
   sudo systemctl start kubelet kube-proxy
-}
+  # verify service
+  sudo systemctl status kubelet kube-proxy
 ```
 
-> Remember to run the above commands on worker node: `worker-1`
+> Remember to run the above commands on worker node: `worker-2`
+
+#### Trouble shooting when kubelet doesn't come up
+```bash
+sudo tail -f /var/log/syslog
+# failed to run Kubelet: running with swap on is not supported, please disable swap!
+sudo swapoff -a
+# service should be back up
+sudo systemctl status kubelet kube-proxy
+```
 
 ## Verification
-On master-1:
+On master-2:
 
 List the registered Kubernetes nodes from the master node:
 
 ```
-master-1$ kubectl get nodes --kubeconfig admin.kubeconfig
+master-2$ kubectl get nodes --kubeconfig admin.kubeconfig
 ```
 
 > output
 
 ```
 NAME       STATUS     ROLES    AGE   VERSION
-worker-1   NotReady   <none>   93s   v1.13.0
+worker-2   NotReady   <none>   93s   v1.13.0
 ```
 
 > Note: It is OK for the worker node to be in a NotReady state.

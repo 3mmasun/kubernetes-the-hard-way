@@ -22,7 +22,7 @@ Move public key of master to all other VMs
 
 ```
 $cat >> ~/.ssh/authorized_keys <<EOF
-ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQD......8+08b vagrant@master-1
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCywhfqcw1fYkaNRetJoPmoXBfOI8QjsOMgzen65Mx0GgV091Xx+g/I6v2UMfafeJV3EGwFE3T64/Jann8ZTMmofXLJzqa2lP01wSoyI0YiK8ckY1+6o2L2EL3YmToJs1+KUUpzomJOgYY6Xanh2ff8XP/FM3tlizXPQ/MVNE8zXHv6JQ+8bbPtButnT4jBlOQUFOM5TKplxqf8ny6S9u4reu0SH4UJDUfR/sHfQJOHUQo+HNMTTHIIHRdRSPtzK4RrTrY4rmMXPHCgBk9ZdvcjFfENuqd2HJEtFIRSCvTdBMXp2uN3h6XQsDDdLGXemiOq8Ga5sYZLLz9qYm/IFE5H kube@master-1
 EOF
 ```
 

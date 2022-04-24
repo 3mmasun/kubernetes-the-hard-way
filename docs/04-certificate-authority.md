@@ -154,9 +154,9 @@ DNS.2 = kubernetes.default
 DNS.3 = kubernetes.default.svc
 DNS.4 = kubernetes.default.svc.cluster.local
 IP.1 = 10.96.0.1
-IP.2 = 192.168.5.11
-IP.3 = 192.168.5.12
-IP.4 = 192.168.5.30
+IP.2 = 192.168.156.50
+IP.3 = 192.168.157.221
+IP.4 = 192.168.144.149
 IP.5 = 127.0.0.1
 EOF
 ```
@@ -193,8 +193,8 @@ basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 subjectAltName = @alt_names
 [alt_names]
-IP.1 = 192.168.5.11
-IP.2 = 192.168.5.12
+IP.1 = 192.168.156.50
+IP.2 = 192.168.157.221
 IP.3 = 127.0.0.1
 EOF
 ```
@@ -243,6 +243,7 @@ for instance in master-1 master-2; do
   scp ca.crt ca.key kube-apiserver.key kube-apiserver.crt \
     service-account.key service-account.crt \
     etcd-server.key etcd-server.crt \
+    kube-apiserver.key kube-apiserver.crt \
     ${instance}:~/
 done
 ```
